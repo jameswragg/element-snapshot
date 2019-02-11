@@ -78,7 +78,7 @@ async function takeScreenshot(site, padding = 0) {
     // process promises in serial order
     await siteArr.reduce(async (promise, site) => {
       await promise;
-      return takeScreenshot(site, 5);
+      return takeScreenshot(site);
     }, true);
 
     // All done.
