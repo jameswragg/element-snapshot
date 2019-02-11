@@ -32,7 +32,7 @@ async function takeScreenshot(site, padding = 0) {
     if (rect) {
       screenshot = await page.screenshot({
         clip: {
-          x: rect.left - padding,
+          x: rect.left >= padding ? rect.left - padding : rect.left,
           y: rect.top - padding,
           width: rect.width + padding * 2,
           height: rect.height + padding * 2
