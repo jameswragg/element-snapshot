@@ -45,7 +45,7 @@ async function takeScreenshot(site, padding = 0) {
         domain,
         site.ElName.length
           ? `${slugify(site.ElName).toLowerCase()}.png`
-          : `${slugify(selector).toLowerCase()}.png`
+          : `${slugify(site.Selector).toLowerCase()}.png`
       );
       fs.ensureDirSync(Path.parse(fullPath).dir);
 
