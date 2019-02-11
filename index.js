@@ -62,20 +62,28 @@ async function takeScreenshot(site, padding = 0) {
 }
 
 (async function() {
-  const siteArr = await parseCsv();
+  try {
+    // Parse CSV
+    const siteArr = await parseCsv();
 
-  browser = await puppeteer.launch({
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage'
-    ]
-  });
+    // Open browser
+    browser = await puppeteer.launch({
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage'
+      ]
+    });
 
-  await siteArr.reduce(async (promise, site) => {
-    await promise;
-    return takeScreenshot(site);
-  }, true);
+    // process promises in serial order
+    await siteArr.reduce(async (promise, site) => {
+      await promise;
+      return takeScreenshot(site, 5);
+    }, true);
 
-  browser.close();
+    // All done.
+    browser.close();
+  } catch (e) {
+    console.error(e);
+  }
 })();
