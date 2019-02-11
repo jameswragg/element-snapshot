@@ -53,7 +53,7 @@ async function takeScreenshot(site, padding = 0) {
       console.log(`📸 ${site.URL} => ${site.Selector}`);
       await page.close();
     } else {
-      console.error(`💥 Can't find selector ${site.Selector}`);
+      console.error(`💥 Can't find selector ${site.Selector} on ${site.URL}`);
       await page.close();
     }
   } catch (e) {
