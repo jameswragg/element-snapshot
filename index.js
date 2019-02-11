@@ -3,7 +3,6 @@ const fs = require('fs-extra');
 const puppeteer = require('puppeteer');
 const slugify = require('slugify');
 const { saveFile } = require('./lib/saveFile');
-const { postprocess } = require('./lib/postprocess');
 const { parseCsv } = require('./lib/parseCsv');
 
 const SNAPSHOT_PATH = './snapshots';
@@ -31,16 +30,14 @@ async function takeScreenshot(site, padding = 0) {
     }, site.Selector);
 
     if (rect) {
-      screenshot = await page
-        .screenshot({
-          clip: {
-            x: rect.left - padding,
-            y: rect.top - padding,
-            width: rect.width + padding * 2,
-            height: rect.height + padding * 2
-          }
-        })
-        .then(postprocess);
+      screenshot = await page.screenshot({
+        clip: {
+          x: rect.left - padding,
+          y: rect.top - padding,
+          width: rect.width + padding * 2,
+          height: rect.height + padding * 2
+        }
+      });
 
       let domain = new URL(site.URL).hostname;
       let fullPath = Path.resolve(
