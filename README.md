@@ -1,6 +1,6 @@
 # element-snapshot
 
-A tool for helping create an Interface Inventory but screen-shotting elements from a list of URLs.
+A tool for helping create an Interface Inventory across sites by screen-shotting elements from a list of URLs.
 
 ## Usage
 
