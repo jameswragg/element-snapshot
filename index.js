@@ -3,71 +3,28 @@ const fs = require('fs-extra');
 const puppeteer = require('puppeteer');
 const slugify = require('slugify');
 const { saveFile } = require('./lib/saveFile');
-const { parseCsv } = require('./lib/parseCsv');
+const { createCapture } = require('./lib/createCapture');
+const configScmema = require('./lib/configSchema');
+const sitesConfig = require('./site-list');
 
-const SNAPSHOT_PATH = './snapshots';
+const CAPTURE_PATH = './captures';
 const TIMEOUT = process.env.TIMEOUT || 10000;
 let browser;
 
-async function takeScreenshot(site, padding = 0) {
-  try {
-    let screenshot;
-
-    const page = await browser.newPage();
-
-    page.setDefaultNavigationTimeout(TIMEOUT);
-    page.setViewport({ width: 1025, height: 1000, deviceScaleFactor: 2 });
-
-    await page.goto(site.URL, { waitUntil: 'networkidle2' });
-
-    const rect = await page.evaluate(selector => {
-      const element = document.querySelector(selector);
-      if (!element) {
-        return null;
-      }
-      const { x, y, width, height } = element.getBoundingClientRect();
-      return { left: x, top: y, width, height, id: element.id };
-    }, site.Selector);
-
-    if (rect) {
-      screenshot = await page.screenshot({
-        clip: {
-          x: rect.left >= padding ? rect.left - padding : rect.left,
-          y: rect.top - padding,
-          width: rect.width + padding * 2,
-          height: rect.height + padding * 2
-        }
-      });
-
-      let domain = new URL(site.URL).hostname;
-      let fullPath = Path.resolve(
-        SNAPSHOT_PATH,
-        domain,
-        site.ElName.length
-          ? `${slugify(site.ElName).toLowerCase()}.png`
-          : `${slugify(site.Selector).toLowerCase()}.png`
-      );
-      fs.ensureDirSync(Path.parse(fullPath).dir);
-
-      saveFile(fullPath, screenshot);
-      console.log(`📸 ${site.URL} => ${site.Selector}`);
-      await page.close();
-    } else {
-      console.error(`💥 Can't find selector ${site.Selector} on ${site.URL}`);
-      await page.close();
-    }
-  } catch (e) {
-    console.error(e);
+configScmema.validate(sitesConfig, async err => {
+  if (err) {
+    // console.error(err);
+    console.log('Validation error in config.js');
+    let errors = err.details.map(i => {
+      return { path: i.path.join(' > '), message: i.message };
+    });
+    console.log(errors);
+    return;
   }
-}
-
-(async function() {
   try {
-    // Parse CSV
-    const siteArr = await parseCsv();
-
     // Open browser
     browser = await puppeteer.launch({
+      // headless: false,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -75,10 +32,55 @@ async function takeScreenshot(site, padding = 0) {
       ]
     });
 
-    // process promises in serial order
-    await siteArr.reduce(async (promise, site) => {
+    // process each site URL
+    await sitesConfig.sites.reduce(async (promise, siteUrl) => {
       await promise;
-      return takeScreenshot(site);
+
+      const page = await browser.newPage();
+
+      page.setDefaultNavigationTimeout(TIMEOUT);
+      page.setViewport({ width: 1025, height: 1000, deviceScaleFactor: 2 });
+
+      await Object.keys(sitesConfig.components).reduce(
+        async (promise, componentKey) => {
+          await promise;
+          const component = sitesConfig.components[componentKey];
+
+          await page.goto(`${siteUrl}${component.path}`, {
+            waitUntil: 'networkidle2'
+          });
+
+          if (component.beforeCapture) {
+            try {
+              await component.beforeCapture(page, component);
+            } catch (error) {
+              console.log('Unable to execute beforeCapture script.');
+              console.error(error);
+            }
+          }
+
+          // get capture
+          let screenshot = await createCapture(page, component.selector);
+
+          // create pathing for capture
+          let domain = new URL(siteUrl).hostname;
+          let fullPath = Path.resolve(
+            CAPTURE_PATH,
+            `${slugify(componentKey).toLowerCase()}`,
+            `${slugify(componentKey).toLowerCase()}--${slugify(domain)}.png`
+          );
+
+          // ensure dir exists
+          await fs.ensureDir(Path.parse(fullPath).dir);
+
+          // save file
+          let sf = saveFile(fullPath, screenshot);
+          return sf;
+        },
+        true
+      );
+
+      return page.close();
     }, true);
 
     // All done.
@@ -86,4 +88,4 @@ async function takeScreenshot(site, padding = 0) {
   } catch (e) {
     console.error(e);
   }
-})();
+});
