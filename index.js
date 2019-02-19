@@ -5,13 +5,13 @@ const slugify = require('slugify');
 const { saveFile } = require('./lib/saveFile');
 const { createCapture } = require('./lib/createCapture');
 const configScmema = require('./lib/configSchema');
-const sitesConfig = require('./site-list');
+const config = require('./config');
 
 const CAPTURE_PATH = './captures';
 const TIMEOUT = process.env.TIMEOUT || 10000;
 let browser;
 
-configScmema.validate(sitesConfig, async err => {
+configScmema.validate(config, async err => {
   if (err) {
     // console.error(err);
     console.log('Validation error in config.js');
@@ -33,7 +33,7 @@ configScmema.validate(sitesConfig, async err => {
     });
 
     // process each site URL
-    await sitesConfig.sites.reduce(async (promise, siteUrl) => {
+    await config.sites.reduce(async (promise, siteUrl) => {
       await promise;
 
       const page = await browser.newPage();
@@ -41,10 +41,10 @@ configScmema.validate(sitesConfig, async err => {
       page.setDefaultNavigationTimeout(TIMEOUT);
       page.setViewport({ width: 1025, height: 1000, deviceScaleFactor: 2 });
 
-      await Object.keys(sitesConfig.components).reduce(
+      await Object.keys(config.components).reduce(
         async (promise, componentKey) => {
           await promise;
-          const component = sitesConfig.components[componentKey];
+          const component = config.components[componentKey];
 
           await page.goto(`${siteUrl}${component.path}`, {
             waitUntil: 'networkidle2'
